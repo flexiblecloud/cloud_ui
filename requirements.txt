@@ -1,0 +1,3 @@
+trio
+trio_asyncio
+git+git://github.com/kostyll/remi@python3.6-trio#egg=remi
