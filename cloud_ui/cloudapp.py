@@ -179,19 +179,21 @@ class FloatingPanesContainer(gui.Widget):
         self.append(self.resizeHelper)
         self.append(self.dragHelper)
 
-    def add_pane(self, pane, x, y):
+    def add_pane(self, pane, x, y, resizable=True):
         pane.style['left'] = gui.to_pix(x)
         pane.style['top'] = gui.to_pix(y)
         pane.onclick.do(self.on_pane_selection)
         pane.style['position'] = 'absolute'
+        pane.resizable = resizable
         self.append(pane)
         self.on_pane_selection(pane)
 
     def on_pane_selection(self, emitter):
         print('on pane selection')
-        self.resizeHelper.setup(emitter,self)
+        if emitter.resizable:
+            self.resizeHelper.setup(emitter,self)
+            self.resizeHelper.update_position()
         self.dragHelper.setup(emitter,self)
-        self.resizeHelper.update_position()
         self.dragHelper.update_position()
 
     def on_helper_dragged_update_the_latter_pos(self, emitter, widget_to_update):
@@ -247,14 +249,37 @@ class UICloud(AServer):
 
 class UICloudApp(UIApplication):
 
+    def is_admin(self):
+        return self.server.auth_factory.is_admin(self.cookie)
+
+    def build_apps_pannel(self):
+        self.server: UICloud
+        vbox = gui.VBox(width=100)
+        for appname in self.server.list_applications():
+            button = gui.Button(appname)
+            def make_runner(appname):
+                def wrapper(*args):
+                    self.start_application(appname)
+                return wrapper
+            button.onclick.do(make_runner(appname))
+            vbox.append(button)
+        return vbox
+
+    def build_services_pannel(self):
+        self.server: UICloud
+        hbox = gui.HBox()
+        for service in self.server.services_instances:
+            hbox.append(gui.Label(service))
+        return hbox
+
     def start_application(self, appname):
         application: 'Application' = self.server.get_application(appname)
         application = application.run_instance(self.cookie)
         application.set_handler(self)
 
         pane = gui.Widget(width=200, height=100)
-        pane.style['background-color'] = 'yellow'
-        self.floatingPaneContainer.add_pane(pane, 130, 120)
+        pane.style['background-color'] = 'gray'
+        self.floatingPaneContainer.add_pane(pane, 130, 120, resizable=application.resizable)
         pane.append(gui.Label(f"[{appname}]"))
         pane.append(application.get_widget())
 
@@ -265,24 +290,19 @@ class UICloudApp(UIApplication):
         button = Button(text="test dummy service")
         button.onclick.do(self.onclick_startdummy)
 
+        container = gui.VBox(width="100%")
+        container.append(self.build_services_pannel())
+
+        workspace = gui.HBox(width="100%")
+        workspace.style['align'] = "left"
+        apps_pannel = self.build_apps_pannel()
+        workspace.append(apps_pannel)
+        container.append(workspace)
+
         self.floatingPaneContainer = FloatingPanesContainer(
-            width=1200, height=800, margin='0px auto')
+            width="100%", height=800, margin='0px auto')
+        workspace.append(self.floatingPaneContainer)
         self.floatingPaneContainer.append(
             gui.Label("Click a panel to select, than drag and stretch"))
 
-        pane1 = gui.Widget(width=200, height=200)
-        pane1.style['background-color'] = 'yellow'
-
-        self.floatingPaneContainer.add_pane(pane1, 10, 100)
-        pane1.append(gui.Label("Panel1, drag and stretch"))
-
-        pane2 = gui.VBox(width=100, height=200)
-        pane2.style['background-color'] = 'green'
-        self.floatingPaneContainer.add_pane(pane2, 250, 100)
-        pane2.append(gui.Label("Panel2, drag and stretch"))
-        pane2.append(button)
-
-        # returning the root widget
-        container = VBox(width=300)
-        container.append(button)
-        return self.floatingPaneContainer
+        return container

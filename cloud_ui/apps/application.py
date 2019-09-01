@@ -17,6 +17,7 @@ class Application(Service):
             self.cloud = cloud
 
     is_single = True
+    resizable = True
 
     @abstractmethod
     def init__gui__(self):
