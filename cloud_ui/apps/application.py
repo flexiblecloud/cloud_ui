@@ -16,6 +16,8 @@ class Application(Service):
             self.cookie = cookie
             self.cloud = cloud
 
+    only_admin = False
+
     is_single = True
     resizable = True
 

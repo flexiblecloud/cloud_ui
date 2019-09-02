@@ -253,10 +253,16 @@ class UICloudApp(UIApplication):
         return self.server.auth_factory.is_admin(self.cookie)
 
     def build_apps_pannel(self):
+        is_admin = self.is_admin()
         self.server: UICloud
         vbox = gui.VBox(width=100)
         for appname in self.server.list_applications():
+            if not is_admin:
+                application = self.server.get_application(appname)
+                if application.only_admin:
+                    continue
             button = gui.Button(appname)
+
             def make_runner(appname):
                 def wrapper(*args):
                     self.start_application(appname)
