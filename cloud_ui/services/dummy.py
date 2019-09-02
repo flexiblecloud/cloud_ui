@@ -7,7 +7,7 @@ class DummyService(Service):
     def get_name(self):
         return "dummy"
 
-    def process(self, name, arguments):
+    async def process(self, name, arguments):
         print(f"[{self.get_name()}] processing {name}, {arguments}")
         if name == "echo":
             return arguments

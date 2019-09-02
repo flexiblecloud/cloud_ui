@@ -1,0 +1,14 @@
+FROM python:3.6-slim
+
+RUN apt update ; apt install git gcc -y
+
+WORKDIR /src/app
+
+COPY requirements.txt ./
+RUN pip install trio
+RUN pip install --no-cache-dir -r requirements.txt
+
+ADD cloud_ui /src/app/cloud_ui
+ADD examples /src/app/examples
+
+CMD [ "python", "-m", "examples.simple" ]

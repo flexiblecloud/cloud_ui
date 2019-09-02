@@ -40,11 +40,11 @@ class Service(object):
                 sender = request['sender']
                 name = request['name']
                 arguments = request['arguments']
-                response = self.process(name, arguments)
+                response = await self.process(name, arguments)
 
                 print(f"SERVICE: {self.get_name()} response {response}")
                 await sender.send(response)
 
     @abstractmethod
-    def process(self, name, arguments):
+    async def process(self, name, arguments):
         pass
