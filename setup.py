@@ -12,7 +12,7 @@ with open('requirements.txt') as f:
 
 def process_requirement(requirement):
     if requirement.startswith("git+"):
-        dep_name = requirement.rpartition("@")[0].partition("/")[2]
+        dep_name = requirement.rpartition("@")[0].rpartition("/")[2]
         return f"{dep_name}@{requirement}"
     return requirement
 
