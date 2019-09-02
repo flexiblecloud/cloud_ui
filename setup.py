@@ -6,6 +6,9 @@ from setuptools import setup
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
+with open('requirements.txt') as f:
+    requirements = f.read().splitlines()
+
 setup(name='cloudui',
     version='0.0.1',
     description='Python trio and remi based library for making web-apps ...',
@@ -19,4 +22,5 @@ setup(name='cloudui',
     license='BSD',
     packages=setuptools.find_packages(),
     include_package_data=True,
+    install_requires=requirements
 )
