@@ -17,7 +17,9 @@ def process_requirement(requirement):
     return requirement
 
 
+print("raw requirements:", requirements)
 requirements = [process_requirement(requirement) for requirement in requirements]
+print("processed requirements:", requirements)
 
 
 setup(
