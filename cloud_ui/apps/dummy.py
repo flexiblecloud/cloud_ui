@@ -16,7 +16,7 @@ class DummyApplication(Application):
         self.button.onclick.do(self.onclickbutton)
 
     def build(self):
-        vbox = gui.VBox(width="100%")
+        vbox = gui.VBox(width="200")
         vbox.append(self.label)
         vbox.append(self.text)
         vbox.append(self.button)
@@ -33,7 +33,7 @@ class DummyApplication(Application):
             response = await service.request("echo", text)
             print(f"got echo-response = {response}")
             self.label.set_text(f"INPUTED TEXT: {self.text.get_value()}")
-            self.handler.set_need_update()
+            self.session.set_need_update()
 
         print("was sent")
-        self.handler.add_foreground_worker(onclickbutton)
+        self.session.add_foreground_worker(onclickbutton)

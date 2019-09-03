@@ -1,5 +1,7 @@
 import trio
 
+import remi
+import remi.gui as G
 from cloud_ui.services.service import Service
 from cloud_ui.apps.application import Application
 from remi import gui
@@ -19,9 +21,10 @@ from remi.aserver import AServer, Application as UIApplication, AuthFactory
 class ResizeHelper(gui.Widget, gui.EventSource):
     EVENT_ONDRAG = "on_drag"
 
-    def __init__(self, project, **kwargs):
+    def __init__(self, project, parent, **kwargs):
         super(ResizeHelper, self).__init__(**kwargs)
         gui.EventSource.__init__(self)
+        self.parent = parent
         self.style['float'] = 'none'
         self.style['background-color'] = "transparent"
         self.style['border'] = '1px dashed black'
@@ -93,9 +96,10 @@ class ResizeHelper(gui.Widget, gui.EventSource):
 class DragHelper(gui.Widget, gui.EventSource):
     EVENT_ONDRAG = "on_drag"
 
-    def __init__(self, project, **kwargs):
+    def __init__(self, project, parent, **kwargs):
         super(DragHelper, self).__init__(**kwargs)
         gui.EventSource.__init__(self)
+        self.parent = parent
         self.style['float'] = 'none'
         self.style['background-color'] = "transparent"
         self.style['border'] = '1px dashed black'
@@ -162,14 +166,16 @@ class DragHelper(gui.Widget, gui.EventSource):
         self.style['position']='absolute'
         self.style['left']=gui.to_pix(gui.from_pix(self.refWidget.style['left']) - gui.from_pix(self.style['width'])/2)
         self.style['top']=gui.to_pix(gui.from_pix(self.refWidget.style['top']) - gui.from_pix(self.style['height'])/2)
+        # self.parent.try_update()
 
 
 class FloatingPanesContainer(gui.Widget):
 
-    def __init__(self, **kwargs):
+    def __init__(self, parent, **kwargs):
         super(FloatingPanesContainer, self).__init__(**kwargs)
-        self.resizeHelper = ResizeHelper(self, width=16, height=16)
-        self.dragHelper = DragHelper(self, width=15, height=15)
+        self.parent = parent
+        self.resizeHelper = ResizeHelper(self, parent, width=16, height=16)
+        self.dragHelper = DragHelper(self, parent, width=15, height=15)
         self.resizeHelper.on_drag.do(self.on_helper_dragged_update_the_latter_pos, self.dragHelper)
         self.dragHelper.on_drag.do(self.on_helper_dragged_update_the_latter_pos, self.resizeHelper)
 
@@ -249,10 +255,17 @@ class UICloud(AServer):
     def list_services(self):
         return [k for k, v in self.services_instances.items()]
 
+    """
+    add background job
+    """
+    def add_background_job(self, job):
+        self.nursery.start_soon(job, self.nursery)
+
     async def run(self, key_file=None, cert_file=None):
         self.services_instances = dict()
         self.applications = [application_cls(self) for application_cls in self.applications]
         async with trio.open_nursery() as nursery:
+            self.nursery = nursery
             for service_cls in self.services:
                 service = service_cls(self)
                 self.services_instances[service.get_name()] = service
@@ -263,6 +276,8 @@ class UICloud(AServer):
 
 
 class UICloudApp(UIApplication):
+
+
     """
     user name
     """
@@ -289,6 +304,13 @@ class UICloudApp(UIApplication):
             self.handler.add_foreground_worker(wrapper_async)
         return wrapper
 
+    def try_update(self):
+        self.session.set_need_update()
+        self.add_background_job(self.update)
+
+    async def update(self, *args):
+        await self.session.do_gui_update()
+
     """
     returns cloud
     """
@@ -305,6 +327,13 @@ class UICloudApp(UIApplication):
     add_foreground_job = add_background_job
 
     """
+    """
+    def send_notification(self, title, message=None):
+        async def wrapper(*args):
+            await self.session.notification_message(title=title, content=message if message else "")
+        self.add_background_job(wrapper)
+
+    """
     checks if user is admin
     """
     def is_admin(self):
@@ -313,7 +342,7 @@ class UICloudApp(UIApplication):
     def build_apps_pannel(self):
         is_admin = self.is_admin()
         self.server: UICloud
-        vbox = gui.VBox(width=100)
+        hbox = gui.HBox(width="100%")
         for appname in self.server.list_applications():
             if not is_admin:
                 application = self.server.get_application(appname)
@@ -326,8 +355,8 @@ class UICloudApp(UIApplication):
                     self.start_application(appname)
                 return wrapper
             button.onclick.do(make_runner(appname))
-            vbox.append(button)
-        return vbox
+            hbox.append(button)
+        return hbox
 
     def build_services_pannel(self):
         self.server: UICloud
@@ -339,15 +368,72 @@ class UICloudApp(UIApplication):
     """
     user api to get run pre-installed application
     """
+
+    def __init__(self, cookie: str, stream: trio.SocketStream, headers: dict, server: 'AServer'):
+        super().__init__(cookie, stream, headers, server)
+        self.applications_panes = dict()
+
     def start_application(self, appname):
         application: 'Application' = self.server.get_application(appname)
         application = application.run_instance(self.session)
 
-        pane = gui.Widget(width=200, height=100)
-        pane.style['background-color'] = 'gray'
+        pane = G.Widget(width=200, height=100)
+        self.prepare_pane(pane, application)
+        self.applications_panes[application] = pane
         self.floatingPaneContainer.add_pane(pane, 130, 120, resizable=application.resizable)
-        pane.append(gui.Label(f"[{appname}]"))
-        pane.append(application.get_widget())
+
+        self.update()
+
+    def prepare_pane(self, pane: remi.gui.Widget, application: Application):
+        pane.style['background-color'] = 'gray'
+
+        control_panel = G.HBox(width="100%")
+        control_panel.style['background-color'] = 'green'
+        control_panel.style['align'] = "left"
+        control_panel.append(G.Label(f"[{application.get_name()}]"))
+
+        maximize_button = G.Button(u"🗖")
+        minimize_button = G.Button(u"🗕")
+        stop_button = G.Button(u"❎")
+
+        control_panel.append([minimize_button, maximize_button, stop_button])
+
+        pane.append(control_panel)
+        widget = application.get_widget()
+        pane.append(widget)
+
+        # self.send_notification("width", message=f"width={widget.style['width']}")
+
+        pane.style['width'] = widget.style['width'].replace('px', '')
+        # pane.style['height'] = widget.style['height'].replace('px', '')
+
+        self.make_on_maximize_pane(pane, maximize_button)
+
+    @property
+    def width(self):
+        return self.floatingPaneContainer.style['width'].replace("px", '')
+
+    @property
+    def height(self):
+        return self.floatingPaneContainer.style['height'].replace("px", '')
+
+    def make_on_maximize_pane(self, pane, button):
+        def wrapper(*args):
+            print("getting sizes...")
+            try:
+                # new_width = int(self.width) / 100.0 * 90
+                new_width = "90%"
+                # new_heigth = int(float(self.height) / 100.0 * 90)
+                new_heigth = "90%"
+            except Exception as e:
+                print("error:")
+                print(e)
+                return
+            # self.send_notification(f"size", message=f"oh = {self.height}, ow = {self.width}, nh = {new_heigth}, nw = {new_width}")
+            print(pane.children)
+            for child_key in pane.children:
+                pane.children[child_key].style['width'] = "100%"
+        button.onclick.do(wrapper)
 
     def onclick_startdummy(self, *args):
         self.start_application('dummy')
@@ -365,8 +451,8 @@ class UICloudApp(UIApplication):
         workspace.append(apps_pannel)
         container.append(workspace)
 
-        self.floatingPaneContainer = FloatingPanesContainer(
-            width="100%", height=800, margin='0px auto')
+        self.floatingPaneContainer = FloatingPanesContainer(self,
+            width="100%", height="100%", margin='0px auto')
         workspace.append(self.floatingPaneContainer)
         self.floatingPaneContainer.append(
             gui.Label("Click a panel to select, than drag and stretch"))

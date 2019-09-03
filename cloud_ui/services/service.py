@@ -6,6 +6,8 @@ import trio
 
 class Service(object):
 
+    cloud: 'UICloud'
+
     """
     return name of service
     """
@@ -30,7 +32,7 @@ class Service(object):
     """
     asynchronous request of some method of service ...
     """
-    async def request(self, name, arguments):
+    async def request(self, name, arguments=None):
         sender, receiver = trio.open_memory_channel(0)
         await self.sender.send(dict(sender=sender, name=name, arguments=arguments))
         async with receiver:

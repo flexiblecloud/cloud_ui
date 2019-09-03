@@ -42,6 +42,12 @@ class Application(Service):
         self.session.add_foreground_worker(job)
 
     """
+    show notification
+    """
+    def notify(self, message):
+        self.session.send_notification(f"{self.get_name()}", message=message)
+
+    """
     creates key gui-controls for app
     """
     @abstractmethod
