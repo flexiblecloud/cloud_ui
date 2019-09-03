@@ -189,7 +189,7 @@ class FloatingPanesContainer(gui.Widget):
         self.on_pane_selection(pane)
 
     def on_pane_selection(self, emitter):
-        print('on pane selection')
+        # print('on pane selection')
         if emitter.resizable:
             self.resizeHelper.setup(emitter,self)
             self.resizeHelper.update_position()
@@ -213,24 +213,39 @@ class UICloud(AServer):
     """
     applications = []
 
+    """
+    returns running service
+    """
     def get_service(self, name):
         service: Service = self.services_instances.get(name, None)
         return service
 
+    """
+    returns running application handler
+    """
     def get_application(self, name):
         for application in self.applications:
             if application.get_name() == name:
                 return application
 
+    """
+    starts some service
+    """
     async def start_service(self, service_cls):
         if service_cls.get_name() in self.services_instances:
             return
         service = service_cls(self)
         self.services_instances[service.get_name()] = service
 
+    """
+    returns list of applications
+    """
     def list_applications(self):
         return [app.get_name() for app in self.applications]
 
+    """
+    returns list of services
+    """
     def list_services(self):
         return [k for k, v in self.services_instances.items()]
 
@@ -248,7 +263,50 @@ class UICloud(AServer):
 
 
 class UICloudApp(UIApplication):
+    """
+    user name
+    """
+    @property
+    def username(self):
+        return self.cookie
 
+
+    """
+    session for current user
+    """
+    @property
+    def session(self):
+        return self
+
+    """
+    wraps asynchronous handler into synchronous callback event-handler
+    """
+    def a(self, handler_async):
+        def wrapper(*args):
+            async def wrapper_async(*args):
+                await handler_async(*args)
+            self.handler: 'UIApplication'
+            self.handler.add_foreground_worker(wrapper_async)
+        return wrapper
+
+    """
+    returns cloud
+    """
+    @property
+    def cloud(self) -> UICloud:
+        return self.server
+
+    """
+    adds corotine to execute in background
+    """
+    def add_background_job(self, job):
+        self.add_foreground_worker(job)
+
+    add_foreground_job = add_background_job
+
+    """
+    checks if user is admin
+    """
     def is_admin(self):
         return self.server.auth_factory.is_admin(self.cookie)
 
@@ -278,10 +336,12 @@ class UICloudApp(UIApplication):
             hbox.append(gui.Label(service))
         return hbox
 
+    """
+    user api to get run pre-installed application
+    """
     def start_application(self, appname):
         application: 'Application' = self.server.get_application(appname)
-        application = application.run_instance(self.cookie)
-        application.set_handler(self)
+        application = application.run_instance(self.session)
 
         pane = gui.Widget(width=200, height=100)
         pane.style['background-color'] = 'gray'

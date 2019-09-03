@@ -6,6 +6,9 @@ import trio
 
 class Service(object):
 
+    """
+    return name of service
+    """
     @classmethod
     @abstractmethod
     def get_name(cls):
@@ -16,11 +19,17 @@ class Service(object):
         self.sender, self.receiver = trio.open_memory_channel(10)
         self.active = True
 
+    """
+    list methods-info of the service
+    """
     @classmethod
     @abstractmethod
     def list(self):
         return []
 
+    """
+    asynchronous request of some method of service ...
+    """
     async def request(self, name, arguments):
         sender, receiver = trio.open_memory_channel(0)
         await self.sender.send(dict(sender=sender, name=name, arguments=arguments))
@@ -31,6 +40,9 @@ class Service(object):
     async def stop(self):
         self.active = False
 
+    """
+    main service loop ...
+    """
     async def start(self):
         self.active = True
         print(f"SERVICE: {self.get_name()} was started")
@@ -45,6 +57,9 @@ class Service(object):
                 print(f"SERVICE: {self.get_name()} response {response}")
                 await sender.send(response)
 
+    """
+    handler of request to service ..
+    """
     @abstractmethod
-    async def process(self, name, arguments):
+    async def process(self, name: str, arguments: 'Any'):
         pass
