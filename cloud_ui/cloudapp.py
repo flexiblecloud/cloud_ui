@@ -227,6 +227,15 @@ class UICloud(AServer):
         return service
 
     """
+    waits for service
+    """
+    async def wait_service(self, name):
+        while True:
+            service: Service = self.services_instances.get(name, None)
+            if service:
+                return service
+
+    """
     returns running application handler
     """
     def get_application(self, name):
