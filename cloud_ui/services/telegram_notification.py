@@ -71,10 +71,18 @@ class TelegramService(Service):
         await self.init()
 
         async def bot_handler(*args):
-            await self.bot()
+            while self.active:
+                try:
+                    await self.bot()
+                except Exception as e:
+                    await trio.sleep(5)
 
         async def echo_handler(*args):
-            await self.echo(self.bot)
+            while self.active:
+                try:
+                    await self.echo(self.bot)
+                except Exception as e:
+                    await trio.sleep(5)
 
         self.cloud.add_background_job(echo_handler)
         self.cloud.add_background_job(bot_handler)
