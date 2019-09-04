@@ -4,4 +4,5 @@ trio-mysql==0.8.0
 trio-websocket==0.7.0
 triopg==0.3.0
 requests-toolbelt==0.9.1
+aiocontextvars==0.2.2
 git+https://github.com/kostyll/remi@python3.6-trio#egg=remi
