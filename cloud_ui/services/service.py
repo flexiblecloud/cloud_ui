@@ -1,5 +1,7 @@
+import json
 import queue
 from abc import abstractmethod
+from collections import defaultdict
 
 import trio
 
@@ -65,3 +67,31 @@ class Service(object):
     @abstractmethod
     async def process(self, name: str, arguments: 'Any'):
         pass
+
+    async def get_param_keystore(self, param_name, defaultvalue, item=None):
+        if item is None:
+            item = self.get_name()
+        keystore_service = await self.cloud.wait_service("keystore")
+        loaded = await keystore_service.request("get", f"{item}#{param_name}")
+        if loaded:
+            try:
+                loaded = json.loads(loaded)
+            except Exception as e:
+                loaded = None
+        if isinstance(defaultvalue, (defaultdict, dict)):
+            if loaded:
+                try:
+                    defaultvalue.update(loaded)
+                    return defaultvalue
+                except Exception as e:
+                    return defaultvalue
+            else:
+                return defaultvalue
+        else:
+            return loaded or defaultvalue
+
+    async def save_param_keystore(self, param_name, obj, item=None):
+        if item is None:
+            item = self.get_name()
+        keystore_service = await self.cloud.wait_service("keystore")
+        await keystore_service.request("put", dict(key=f"{item}#{param_name}", value=json.dumps(obj)))
