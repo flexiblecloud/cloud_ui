@@ -17,7 +17,7 @@ from cloud_ui.apps.telegram_notification import TelegramNotificationManageApplic
 
 if __name__ == "__main__":
 
-    # logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(level=logging.DEBUG)
 
     UICloud.services = [DummyService, KeyStoreService, TelegramService]
     UICloud.applications = [DummyApplication, KeyStoreApplication, TelegramNotificationManageApplication]

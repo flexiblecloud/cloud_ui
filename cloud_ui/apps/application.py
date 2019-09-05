@@ -8,6 +8,9 @@ from ..services.service import Service
 
 class Application(Service):
 
+    width = 300
+    height = 150
+
     session: 'UICloudApp'
     cloud: 'UICloud'
 

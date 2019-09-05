@@ -52,13 +52,13 @@ class Service(object):
         print(f"SERVICE: {self.get_name()} was started")
         async with self.receiver:
             async for request in self.receiver:
-                print(f"SERVICE: {self.get_name()} got new request {str(request)}")
+                # print(f"SERVICE: {self.get_name()} got new request {str(request)}")
                 sender = request['sender']
                 name = request['name']
                 arguments = request['arguments']
                 response = await self.process(name, arguments)
 
-                print(f"SERVICE: {self.get_name()} response {response}")
+                # print(f"SERVICE: {self.get_name()} response {response}")
                 await sender.send(response)
 
     """

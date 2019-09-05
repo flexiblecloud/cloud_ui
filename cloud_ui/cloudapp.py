@@ -386,29 +386,76 @@ class UICloudApp(UIApplication):
         application: 'Application' = self.server.get_application(appname)
         application = application.run_instance(self.session)
 
-        pane = G.Widget(width=200, height=100)
-        self.prepare_pane(pane, application)
+        pane = self.prepare_pane(application)
         self.applications_panes[application] = pane
         self.floatingPaneContainer.add_pane(pane, 130, 120, resizable=application.resizable)
 
-        self.update()
+        self.add_background_job(self.update)
 
-    def prepare_pane(self, pane: remi.gui.Widget, application: Application):
-        pane.style['background-color'] = 'gray'
+    def make_button_pane_manipulator(self, pane, title, actions):
+        button = Button(title, width=30)
+        def wrapper(*args):
+            for attr_name, value in actions:
+                try:
+                    pane.style[attr_name] = gui.to_pix(gui.from_pix(pane.style[attr_name]) + value)
+                except Exception as e:
+                    print(f"Exception in pane manipulation ...{title}{attr_name}{value} {str(e)}")
+        button.onclick.do(wrapper)
+        return button
+
+    def prepare_pane(self, application: Application):
+        print("making pane ...")
 
         control_panel = G.HBox(width="100%")
         control_panel.style['background-color'] = 'green'
-        control_panel.style['align'] = "left"
+        # control_panel.style['align-items'] = 'flex-start'
+        # control_panel.style['justify-content'] = 'flex-start'
+        # control_panel.style['align-justify'] = "left"
         control_panel.append(G.Label(f"[{application.get_name()}]"))
 
         maximize_button = G.Button(u"🗖")
         minimize_button = G.Button(u"🗕")
         stop_button = G.Button(u"❎")
 
-        control_panel.append([minimize_button, maximize_button, stop_button])
+        control_panel.append([
+            minimize_button, maximize_button, stop_button,
+        ])
 
-        pane.append(control_panel)
         widget = application.get_widget()
+        pane = G.Widget(width=application.width, height=application.height)
+        pane.style['background-color'] = 'gray'
+
+        buttons = {}
+        for button_name, title, actions in [
+            ("move_left", u"←", (("left", -100),)),
+            ("move_right", u"→", (("left", 100),)),
+            ("move_top", u"↓", (("top", +100),)),
+            ("move_bottom", u"↑", (("top", -100),)),
+
+            ("reduce_bottom", u"↧", (("height", -100),)),
+            ("reduce_top", u"↥", (("height", -100), ("top", -100))),
+            ("reduce_right", u"↦", (("width", -100),)),
+            ("reduce_left", u"↤", (("width", -100), ("left", +100))),
+
+            ("increase_bottom", u"⇊", [("height", 100)]),
+            ("increase_top", u"⇈", [("height", 100), ("top", -100)]),
+            ("increase_right", u"⇉", [("width", 100)]),
+            ("increase_left", u"⇇", [("width", 100), ("left", -100)])
+
+        ]:
+            buttons[button_name] = self.make_button_pane_manipulator(pane, title, actions)
+        pane.append(control_panel)
+
+        move_panel = G.HBox()
+        reduce_panel = G.HBox()
+        increase_panel = G.HBox()
+
+        move_panel.append([buttons[f"move_{dirrection}"] for dirrection in ("left", "top", "bottom", "right")])
+        reduce_panel.append([buttons[f"reduce_{dirrection}"] for dirrection in ("left", "top", "bottom", "right")])
+        increase_panel.append([buttons[f"increase_{dirrection}"] for dirrection in ("left", "top", "bottom", "right")])
+
+        control_panel.append([reduce_panel, move_panel, increase_panel])
+
         pane.append(widget)
 
         # self.send_notification("width", message=f"width={widget.style['width']}")
@@ -417,6 +464,8 @@ class UICloudApp(UIApplication):
         # pane.style['height'] = widget.style['height'].replace('px', '')
 
         self.make_on_maximize_pane(pane, maximize_button)
+        print("pane was mode...")
+        return pane
 
     @property
     def width(self):
