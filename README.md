@@ -216,6 +216,7 @@ $ python -m examples.model_view_simple
 
 -------------------------------------
 Fast start using docker ...
+-
 ```bash
 $ git clone https://github.com/flexiblecloud/cloud_ui
 $ cd cloud_ui
@@ -223,3 +224,7 @@ $ docker build -t test_cloud_ui -f Dockerfile.example.simple .
 $ docker run --rm -it --net=host test_cloud_ui
 ```
 
+---------
+model_view_simple example(with control/manipulation bugs yet ...)
+- 
+![](examples.model_view_simple.gif)
