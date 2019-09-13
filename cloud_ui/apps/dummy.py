@@ -3,6 +3,8 @@ from .application import Application
 
 
 class DummyApplication(Application):
+    width = 400
+    height = 200
 
     @classmethod
     def get_name(cls):

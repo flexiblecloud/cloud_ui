@@ -1,7 +1,7 @@
+import logging
 from abc import abstractmethod
 
 import trio
-
 
 from ..services.service import Service
 
@@ -18,9 +18,11 @@ class Application(Service):
         if not session:
             super().__init__(cloud)
             self.app_instances = dict()
+            self.logger = logging.getLogger(f"[{self.get_name()}:ROOT]")
         else:
             self.session = session
             self.cloud = cloud
+            self.logger = logging.getLogger(f"[{self.get_name()}:{self.session.cookie}]")
 
     only_admin = False
 

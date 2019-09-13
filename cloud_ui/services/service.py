@@ -1,4 +1,5 @@
 import json
+import logging
 import queue
 from abc import abstractmethod
 from collections import defaultdict
@@ -22,6 +23,7 @@ class Service(object):
         self.cloud = cloud
         self.sender, self.receiver = trio.open_memory_channel(10)
         self.active = True
+        self.logger = logging.getLogger(f"[{self.get_name()}]")
 
     """
     list methods-info of the service
@@ -49,7 +51,7 @@ class Service(object):
     """
     async def start(self):
         self.active = True
-        print(f"SERVICE: {self.get_name()} was started")
+        self.logger.debug(f"SERVICE: {self.get_name()} was started")
         async with self.receiver:
             async for request in self.receiver:
                 # print(f"SERVICE: {self.get_name()} got new request {str(request)}")

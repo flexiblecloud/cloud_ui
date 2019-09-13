@@ -69,7 +69,7 @@ class SimpleApplication(Application):
             response_mul = await service.request("mul", dict(x=x, y=y))
 
             self.label.set_text(f" Result: {x} + {y} = {response_add}, {x} * {y} = {response_mul}")
-            self.handler.set_need_update()
+            self.session.set_need_update()
 
         print("was sent")
-        self.handler.add_foreground_worker(onclickbutton)
+        self.add_background_job(onclickbutton)

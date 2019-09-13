@@ -2,6 +2,16 @@ import trio
 
 import remi
 import remi.gui as G
+old_from_px = G.from_pix
+def new_from_px(x):
+    try:
+        return old_from_px(x)
+    except ValueError as e:
+        print("Captured", e)
+        print(x)
+        return 200
+
+G.from_pix = new_from_px
 from cloud_ui.services.service import Service
 from cloud_ui.apps.application import Application
 from remi import gui
@@ -15,8 +25,18 @@ from remi.gui import (
     TreeView, TreeItem
 )
 
+
 from remi.aserver import AServer, Application as UIApplication, AuthFactory
 
+
+def from_px(obj, attr_name, parent, default=200):
+    try:
+        return G.from_pix(obj.style[attr_name])
+    except ValueError:
+        try:
+            return G.from_pix(parent.style[attr_name])
+        except ValueError:
+            return default
 
 class ResizeHelper(gui.Widget, gui.EventSource):
     EVENT_ONDRAG = "on_drag"
@@ -88,10 +108,34 @@ class ResizeHelper(gui.Widget, gui.EventSource):
             return ()
 
     def update_position(self):
+        # print("RS Helper updating position")
         self.style['position']='absolute'
-        self.style['left']=gui.to_pix(gui.from_pix(self.refWidget.style['left']) + gui.from_pix(self.refWidget.style['width']) - gui.from_pix(self.style['width'])/2)
-        self.style['top']=gui.to_pix(gui.from_pix(self.refWidget.style['top']) + gui.from_pix(self.refWidget.style['height']) - gui.from_pix(self.style['height'])/2)
+        self.style['left'] = \
+            gui.to_pix(
+                gui.from_pix(self.refWidget.style['left'])
+            + from_px(
+                    # self.refWidget.style['width']
+                    self, 'width', self.parent
+                )
+            - from_px(
+                    # self.style['width']
+                    self, 'width', self.parent
+                )/2)
+        self.style['top'] = \
+            gui.to_pix(
+                gui.from_pix(self.refWidget.style['top'])
+                + from_px(
+                    # self.refWidget.style['height']
+                    self, 'height', self.parent
+                )
+                - from_px(
+                    # self.style['height']
+                    self, 'height', self.parent
+                )/2)
+        # print("RS Helper position updated")
 
+width = 300
+height = 300
 
 class DragHelper(gui.Widget, gui.EventSource):
     EVENT_ONDRAG = "on_drag"
@@ -163,9 +207,23 @@ class DragHelper(gui.Widget, gui.EventSource):
             return ()
 
     def update_position(self):
+        # print("updating position")
         self.style['position']='absolute'
-        self.style['left']=gui.to_pix(gui.from_pix(self.refWidget.style['left']) - gui.from_pix(self.style['width'])/2)
-        self.style['top']=gui.to_pix(gui.from_pix(self.refWidget.style['top']) - gui.from_pix(self.style['height'])/2)
+        self.style['left']=gui.to_pix(
+            from_px(
+                self.refWidget.style['left']
+            )
+            - from_px(
+                # self.style['width']
+                self, 'width', self.parent
+            )/2)
+        self.style['top']=gui.to_pix(
+            from_px(
+                self.refWidget.style['top']
+            ) - from_px(
+                # self.style['height']
+                self, 'height', self.parent
+            )/2)
         # self.parent.try_update()
 
 
@@ -397,7 +455,7 @@ class UICloudApp(UIApplication):
         def wrapper(*args):
             for attr_name, value in actions:
                 try:
-                    pane.style[attr_name] = gui.to_pix(gui.from_pix(pane.style[attr_name]) + value)
+                    pane.style[attr_name] = gui.to_pix(from_px(pane, attr_name, None) + value)
                 except Exception as e:
                     print(f"Exception in pane manipulation ...{title}{attr_name}{value} {str(e)}")
         button.onclick.do(wrapper)
@@ -406,7 +464,7 @@ class UICloudApp(UIApplication):
     def prepare_pane(self, application: Application):
         print("making pane ...")
 
-        control_panel = G.HBox(width="100%")
+        control_panel = G.HBox(width="100%", height="60")
         control_panel.style['background-color'] = 'green'
         # control_panel.style['align-items'] = 'flex-start'
         # control_panel.style['justify-content'] = 'flex-start'
@@ -420,8 +478,11 @@ class UICloudApp(UIApplication):
         control_panel.append([
             minimize_button, maximize_button, stop_button,
         ])
-
-        widget = application.get_widget()
+        try:
+            widget = application.get_widget()
+        except Exception as e:
+            print(e)
+            raise e
         pane = G.Widget(width=application.width, height=application.height)
         pane.style['background-color'] = 'gray'
 
@@ -512,7 +573,7 @@ class UICloudApp(UIApplication):
         self.floatingPaneContainer = FloatingPanesContainer(self,
             width="100%", height="100%", margin='0px auto')
         workspace.append(self.floatingPaneContainer)
-        self.floatingPaneContainer.append(
-            gui.Label("Click a panel to select, than drag and stretch"))
+        # self.floatingPaneContainer.append(
+        #     gui.Label("Click a panel to select, than drag and stretch"))
 
         return container
